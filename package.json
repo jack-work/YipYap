@@ -1,0 +1,28 @@
+{
+  "name": "yipyap",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Voice to text",
+  "main": "dist/yipyap.js",
+  "bin": {
+    "yipyap": "./dist/yipyap.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/yipyap.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.16",
+    "node-audiorecorder": "^3.0.0",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@picovoice/pvrecorder-node": "^1.2.5",
+    "clipboardy": "^3.0.0",
+    "dotenv": "^16.4.7",
+    "node-record-lpcm16": "^1.0.1",
+    "node-record-lpcm16-ts": "^1.0.0",
+    "openai": "^4.82.0",
+    "wav": "^1.0.2"
+  }
+}

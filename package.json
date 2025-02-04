@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/yipyap.js"
+    "start": "node dist/yipyap.js",
+    "postinstall": "node scripts/install-hotkey.js"
   },
   "devDependencies": {
     "@types/node": "^20.17.16",

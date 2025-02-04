@@ -6,7 +6,7 @@ import * as readline from 'readline';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import record from 'node-record-lpcm16';
-import openVim from './vimlauncher.js';
+import vim from './vimlauncher.js';
 import { openAiScribe } from './openAiScribe.js';
 import { exit } from 'process';
 import { Scribe } from './Scribe.js';
@@ -28,19 +28,28 @@ export type YipYap = {
 export function create(options: YipYapOptions): YipYap {
   return {
     run: async () => {
-      try {
-        console.log('Starting recording...');
-        const fileName = `recording-${Date.now()}.wav`;
-        const actions = await recordAudio(fileName, options.menu);
-        console.log('Recording stopped. Starting transcription...');
-        let transcription = await options.transcribe(fileName);
-        for (const action of actions.steps) {
-          transcription = await action(transcription);
+      let stop: boolean;
+      do {
+        stop = true;
+        try {
+          console.log('Starting recording...');
+          const fileName = `recording-${Date.now()}.wav`;
+          const actions = await recordAudio(fileName, options.menu);
+          console.log('Recording stopped. Starting transcription...');
+          let transcription = await options.transcribe(fileName);
+          for (const action of actions.steps) {
+            if (await action.keep()) {
+              transcription = await action.run(transcription);
+            }
+            if (await action.shouldrerun(transcription)) {
+              stop = false;
+            }
+          }
+          return;
+        } catch (error) {
+          console.error('Failed to process audio:', error);
         }
-        return;
-      } catch (error) {
-        console.error('Failed to process audio:', error);
-      }
+      } while (!stop)
     }
   }
 }
@@ -121,29 +130,68 @@ async function recordAudio(fileName: string, orders: Menu): Promise<Order> {
   });
 }
 
-const actions: { edit: Action, copy: Action } = {
-  edit: async (content: string): Promise<string> => {
-    if (content) {
-      return await openVim({
-        initialContent: content,
-        fileName: `recording-${Date.now()}.md`,
-        encoding: 'utf8',
-      });
-    } else {
-      throw new Error('No transcription returned');
-    }
+const actions: { [key: string]: Action } = {
+  aichat: {
+    shouldrerun: (): Promise<boolean> => { return Promise.resolve(false); },
+    run: async (content: string): Promise<string> => {
+      if (content) {
+        //await vim.openVim(`-c 'terminal' -c 'startinsert | call feedkeys("aichat --session \'test\' --prompt \'${content.replace(/"/g, "\\'")}\'")`);
+        //await vim.openVim(`-c "terminal" -c "startinsert | call feedkeys('aichat')"`);
+        //await vim.openVim(["-c", '\"terminal\"', "-c", '\"startinsert | call feedkeys(\'aichat --prompt \\\"${content}\\\")\"']);
+        await vim.openVim([
+            "-c", '\"terminal\"',
+            // This probably only works with powershell due to the double quotes sadly.  Need a better terminal abstraction to make it more versitile.
+            "-c", `"startinsert | call feedkeys('aichat --session ""test"" --prompt ""${content}""' . nr2char(13))"`
+        ]);
+        return content;
+      } else {
+        throw new Error('No transcription returned');
+      }
+    },
+    keep: () => { return Promise.resolve(true); }
   },
-  copy: async (content: string): Promise<string> => {
-    if (content) {
-      await clipboardy.write(content);
-      return content;
-    } else {
-      throw new Error('No transcription returned');
-    }
-  }
+  edit: {
+    shouldrerun: (): Promise<boolean> => { return Promise.resolve(false); },
+    run: async (content: string): Promise<string> => {
+      if (content) {
+        return await vim.openVimWithFile({
+          initialContent: content,
+          fileName: `recording-${Date.now()}.md`,
+          encoding: 'utf8',
+        });
+      } else {
+        throw new Error('No transcription returned');
+      }
+    },
+    keep: () => { return Promise.resolve(true); }
+  },
+  copy: {
+    shouldrerun: (): Promise<boolean> => { return Promise.resolve(false); },
+    run: async (content: string): Promise<string> => {
+      if (content) {
+        await clipboardy.write(content);
+        return content;
+      } else {
+        throw new Error('No transcription returned');
+      }
+    },
+    keep: (): Promise<boolean> => { return Promise.resolve(true); },
+  },
+  retry: {
+    keep: (): Promise<boolean> => { return Promise.resolve(false); },
+    run: async (_content: string): Promise<string> => {
+      return Promise.resolve('');
+    },
+    shouldrerun: (): Promise<boolean> => { return Promise.resolve(true); },
+  },
 }
 
 const defaultMenu: Menu = {
+  aichat: {
+    keybinding: 'a',
+    description: 'open aichat with input',
+    steps: [actions.aichat]
+  },
   editAndCopy: {
     keybinding: 'e',
     description: 'edit, then copy',

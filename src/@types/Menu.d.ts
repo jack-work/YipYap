@@ -1,4 +1,8 @@
-export type Action = (content: string) => Promise<string>;
+export type Action = {
+  keep: () => Promise<bool>;
+  run: (content: string) => Promise<string>;
+  shouldrerun: (content: string) => Promise<bool>;
+}
 export type Order = {
   keybinding: string;
   steps: Action[];

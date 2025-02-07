@@ -1,8 +1,8 @@
-import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import { join, sep } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
+import { launchTerminalApplication } from './launchTerminalApplication.js';
 
 export interface VimOptions {
   initialContent?: string;
@@ -45,27 +45,7 @@ async function openVimWithFile(options: VimOptions): Promise<string> {
  * with the content of the buffer when Vim is closed
  */
 async function openVim(input: string[]): Promise<void> {
-  return new Promise<void>(async (resolve, reject) => {
-    const vimProcess = spawn('nvim.exe', input, {
-        stdio: ['inherit', 'inherit', 'inherit'],
-        windowsHide: false,
-        shell: true 
-    });
-
-    vimProcess.on('error', (err) => reject(err));
-
-    vimProcess.on('exit', async (code) => {
-      try {
-        if (code !== 0) {
-          throw new Error(`Vim process exited with code ${code}`);
-        }
-
-        resolve();
-      } catch (err) {
-        reject();
-      }
-    });
-  });
+  return launchTerminalApplication('nvim.exe', input);
 }
 
 async function cleanup(tempDir: string): Promise<void> {

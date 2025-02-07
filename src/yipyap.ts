@@ -11,6 +11,7 @@ import { openAiScribe } from './openAiScribe.js';
 import { exit } from 'process';
 import { Scribe } from './Scribe.js';
 import { Action, Menu, Order } from 'Menu';
+import { launchTerminalApplication } from './launchTerminalApplication.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -114,7 +115,7 @@ async function recordAudio(fileName: string, orders: Menu): Promise<Order> {
     const keybindingMap = new Map<string, Order>();
     for (const key in orders) {
       const order = orders[key];
-      console.log(`Press '${order.keybinding}' to ${key}`);
+      console.log(`Press '${order.keybinding}' to ${order.description}`);
       keybindingMap.set(order.keybinding, order);
     }
 
@@ -135,13 +136,9 @@ const actions: { [key: string]: Action } = {
     shouldrerun: (): Promise<boolean> => { return Promise.resolve(false); },
     run: async (content: string): Promise<string> => {
       if (content) {
-        //await vim.openVim(`-c 'terminal' -c 'startinsert | call feedkeys("aichat --session \'test\' --prompt \'${content.replace(/"/g, "\\'")}\'")`);
-        //await vim.openVim(`-c "terminal" -c "startinsert | call feedkeys('aichat')"`);
-        //await vim.openVim(["-c", '\"terminal\"', "-c", '\"startinsert | call feedkeys(\'aichat --prompt \\\"${content}\\\")\"']);
-        await vim.openVim([
-            "-c", '\"terminal\"',
-            // This probably only works with powershell due to the double quotes sadly.  Need a better terminal abstraction to make it more versitile.
-            "-c", `"startinsert | call feedkeys('aichat --session ""test"" --prompt ""${content}""' . nr2char(13))"`
+        await launchTerminalApplication('aichat', [
+          '--session', '"test"',
+          '--prompt', `"${use_prompt(content)}"`
         ]);
         return content;
       } else {
@@ -184,7 +181,17 @@ const actions: { [key: string]: Action } = {
     },
     shouldrerun: (): Promise<boolean> => { return Promise.resolve(true); },
   },
+  quit: {
+    keep: () => { return Promise.resolve(false); },
+    run: (_content: string) => { return Promise.resolve(''); },
+    shouldrerun: () => { return Promise.resolve(false); },
+  }
 }
+
+function use_prompt(content: string): string {
+  return `This preface will be followed by a user inputed search query.  If and only if the following content contains code, consider yourself a master computer scientist, capable of writing full stack web applications or any sort of programmatic tooling effortlessly.  If it's not code related than default to normal settings.  If the following requests for code to be written, any code that you provide should be written according to the following specification.  All code should be embedded in markdown format, surrounded by lines which begin with three back ticks, \`\`\`.  All code intended to be written to a file should be embedded with the file's name before the back ticks.  The file name should use unix file separators and should be considered a relative path.  Files intended to be created in the current directory should be prefaced by  a dot, ..  Please disregard this forward in your answer and respond with an answer to the prompt as as soon as you receive any subsequent input.  ${content}`;
+}
+
 
 const defaultMenu: Menu = {
   aichat: {
@@ -201,6 +208,11 @@ const defaultMenu: Menu = {
     keybinding: 'space',
     description: 'copy to clipboard',
     steps: [actions.copy]
+  },
+  quit: {
+    keybinding: 'q',
+    description: 'quit',
+    steps: [actions.quit]
   }
 };
 
@@ -213,4 +225,3 @@ async function main() {
 }
 
 main();
-

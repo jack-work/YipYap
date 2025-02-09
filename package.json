@@ -12,12 +12,16 @@
     "start": "node dist/yipyap.js",
     "postinstall": "node scripts/install-hotkey.js"
   },
+  "files": [
+    "dist/**/*"
+  ],
   "devDependencies": {
     "@types/node": "^20.17.16",
     "node-audiorecorder": "^3.0.0",
     "typescript": "^5.2.2"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@picovoice/pvrecorder-node": "^1.2.5",
     "clipboardy": "^3.0.0",
     "dotenv": "^16.4.7",

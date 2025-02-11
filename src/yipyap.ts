@@ -15,6 +15,7 @@ import { Action, Menu, Order } from 'Menu';
 import { createTerminal } from './terminalApplication.js';
 import { createConsoleLogger } from './consoleLogger.js';
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -32,7 +33,7 @@ export type YipYap = {
 
 async function readTextFile(path: string, logger: DiagLogger) {
   try {
-    const content = await readFile(path, 'utf-8');
+    const content = await readFile(join(__dirname, '..', path), 'utf-8');
     return content;
   } catch (err) {
     logger.error('Failed to read file:', err);
